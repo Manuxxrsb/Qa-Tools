@@ -37,35 +37,37 @@ function Encript({ isCollapsed }) {
                         >
                             Desencriptar
                         </button>
-                    </div>
-
-                    {/* Inputs de Key e IV alineados a la derecha */}
-                    <div className="flex flex-row justify-end gap-6 mb-4 w-full"> {/* Más espacio entre inputs, ocupa todo el ancho */}
-                        <div className="flex flex-col items-end">
-                            <label className="block text-white text-sm font -bold mb-1 text-center w-full" htmlFor="key-input">
+                    </div>                    {/* Inputs de Key e IV centrados */}
+                    <div className="flex flex-row justify-center gap-12 mb-4 w-full max-w-5xl mx-auto">
+                        <div className="flex-1 flex flex-col items-center">
+                            <label className="block text-white text-sm font-bold mb-1 text-center w-full" htmlFor="key-input">
                                 Clave de encriptación (Key):
                             </label>
                             <input
                                 id="key-input"
-                                className="w-64 p-2 border border-gray-500 rounded bg-gray-800 text-white"
+                                className="w-full p-2 border border-gray-500 rounded bg-gray-800 text-white"
                                 placeholder="Clave secreta..."
                                 value={key}
                                 onChange={(e) => setKey(e.target.value)}
                             />
-                            <p className="text-xs text-gray-400 mt-1 text-center w-full">La clave debe ser segura y recordable (16 o 32 caracteres)</p>
+                            <p className="text-xs text-gray-400 mt-1 text-center w-full">
+                                La clave debe ser segura y recordable (16 o 32 caracteres)
+                            </p>
                         </div>
-                        <div className="flex flex-col items-end">
+                        <div className="flex-1 flex flex-col items-center">
                             <label className="block text-white text-sm font-bold mb-1 text-center w-full" htmlFor="iv-input">
                                 Vector de Inicialización (IV):
                             </label>
                             <input
                                 id="iv-input"
-                                className="w-52 p-2 border border-gray-500 rounded bg-gray-800 text-white"
+                                className="w-full p-2 border border-gray-500 rounded bg-gray-800 text-white"
                                 placeholder="Vector de inicialización (16 o 32)"
                                 value={iv}
                                 onChange={(e) => setIv(e.target.value)}
                             />
-                            <p className="text-xs text-gray-400 mt-1 text-center w-full">Debe tener 16 o 32 caracteres</p>
+                            <p className="text-xs text-gray-400 mt-1 text-center w-full">
+                                Debe tener 16 o 32 caracteres
+                            </p>
                         </div>
                     </div>
 
