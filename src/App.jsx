@@ -40,7 +40,7 @@ function App() {
       case 'api':
         return <ApiPage csvContent={csvContent} setCsvContent={setCsvContent} clearCsvCache={clearCsvCache} />;
       case 'encript':
-        return <Encript isCollapsed={isSidebarCollapsed} />;
+        return <Encript />;
       default:
         return <HomePage setActiveView={setActiveView} />;
     }

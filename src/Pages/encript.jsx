@@ -2,7 +2,7 @@ import useEncryption from '../Hooks/useEncryption';
 import { copyToClipboard, showCopySuccess } from '../Handlers/ClipboardHandler';
 import { formatJSON } from '../Handlers/JsonHandler';
 
-function Encript({ isCollapsed }) {
+function Encript() {
     const {
         text,
         setText,
