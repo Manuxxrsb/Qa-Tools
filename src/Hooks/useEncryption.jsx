@@ -50,6 +50,19 @@ const useEncryption = () => {
     };
 
     /**
+     * Normaliza la clave o IV a WordArray si es de 16 o 32 bytes
+     * @param {string} str - Key o IV
+     * @returns {CryptoJS.lib.WordArray}
+     */
+    const normalizeKeyOrIv = (str) => {
+        if (typeof str !== 'string') return null;
+        if (str.length === 16 || str.length === 32) {
+            return CryptoJS.enc.Utf8.parse(str);
+        }
+        return null;
+    };
+
+    /**
      * Valida que todos los datos necesarios estén presentes
      * @returns {boolean} Indica si los datos son válidos
      */
@@ -58,17 +71,22 @@ const useEncryption = () => {
             setError('Por favor, ingresa un texto para procesar');
             return false;
         }
-
         if (!key) {
             setError('La clave de encriptación es obligatoria');
             return false;
         }
-
-        if (!iv || iv.length < 16) {
-            setError('El vector de inicialización (IV) debe tener al menos 16 caracteres');
+        if (!iv) {
+            setError('El vector de inicialización (IV) es obligatorio');
             return false;
         }
-
+        if (!(key.length === 16 || key.length === 32)) {
+            setError('La clave debe tener 16 o 32 caracteres (bytes)');
+            return false;
+        }
+        if (!(iv.length === 16 || iv.length === 32)) {
+            setError('El IV debe tener 16 o 32 caracteres (bytes)');
+            return false;
+        }
         return true;
     };
 
@@ -80,10 +98,11 @@ const useEncryption = () => {
      * @returns {string} Texto encriptado
      */
     const encrypt = (textToEncrypt, encryptionKey, initVector) => {
-        // Convertir la clave y IV a formato utilizable por CryptoJS
-        const keyHex = CryptoJS.enc.Utf8.parse(encryptionKey);
-        const ivHex = CryptoJS.enc.Utf8.parse(initVector.slice(0, 16)); // Asegurar que IV tenga exactamente 16 bytes
-
+        const keyWordArray = normalizeKeyOrIv(encryptionKey);
+        const ivWordArray = normalizeKeyOrIv(initVector);
+        if (!keyWordArray || !ivWordArray) {
+            throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
+        }
         // Verificar si el texto parece JSON para intentar tratarlo como objeto
         let textToProcess = textToEncrypt;
 
@@ -101,8 +120,8 @@ const useEncryption = () => {
         }
 
         // Encriptar usando AES
-        const encrypted = CryptoJS.AES.encrypt(textToProcess, keyHex, {
-            iv: ivHex,
+        const encrypted = CryptoJS.AES.encrypt(textToProcess, keyWordArray, {
+            iv: ivWordArray,
             mode: CryptoJS.mode.CBC,
             padding: CryptoJS.pad.Pkcs7
         });
@@ -118,13 +137,15 @@ const useEncryption = () => {
      * @returns {string|object} Texto desencriptado o objeto JSON
      */
     const decrypt = (textToDecrypt, encryptionKey, initVector) => {
-        // Convertir la clave y IV a formato utilizable por CryptoJS
-        const keyHex = CryptoJS.enc.Utf8.parse(encryptionKey);
-        const ivHex = CryptoJS.enc.Utf8.parse(initVector.slice(0, 16)); // Asegurar que IV tenga exactamente 16 bytes
+        const keyWordArray = normalizeKeyOrIv(encryptionKey);
+        const ivWordArray = normalizeKeyOrIv(initVector);
+        if (!keyWordArray || !ivWordArray) {
+            throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
+        }
 
         // Desencriptar usando AES
-        const decrypted = CryptoJS.AES.decrypt(textToDecrypt, keyHex, {
-            iv: ivHex,
+        const decrypted = CryptoJS.AES.decrypt(textToDecrypt, keyWordArray, {
+            iv: ivWordArray,
             mode: CryptoJS.mode.CBC,
             padding: CryptoJS.pad.Pkcs7
         });
