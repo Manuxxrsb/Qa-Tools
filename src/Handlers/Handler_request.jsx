@@ -15,6 +15,7 @@ const api = axios.create({
 const useRequest = () => {
   const [respuesta, setRespuesta] = useState("");
   const [error, setError] = useState("");
+  const [statusCode, setStatusCode] = useState("");
   /**
    * Realiza una petición HTTP genérica.
    * @param {Object} params
@@ -53,11 +54,12 @@ const useRequest = () => {
       } else {
         // GET u otros métodos sin body
         res = await api.get(cleanUrl, config);
-      }
-      setRespuesta(res.data);
+      } setRespuesta(res.data);
+      setStatusCode(res.status);
       setError("");
     } catch (err) {
       setRespuesta("");
+      setStatusCode(err.response?.status || "");
       let errorMessage = "Error en la solicitud";
       if (err.response) {
         errorMessage = err.response.data?.message || `Error ${err.response.status}: ${err.response.statusText}`;
@@ -69,8 +71,7 @@ const useRequest = () => {
       setError(errorMessage);
       console.error("Error detallado:", err);
     }
-  };
-  return { respuesta, error, handleRequest };
+  }; return { respuesta, error, statusCode, handleRequest };
 };
 
 export default useRequest;

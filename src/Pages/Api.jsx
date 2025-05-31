@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import ModalCsv from '../Components/ModalsCSV';
+import useRequest from '../Handlers/Handler_request';
+import ApiTestResults from '../Components/ApiTestResults';
 
 function ApiPage({ csvContent, setCsvContent, clearCsvCache }) {
     const [fileName, setFileName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [lastLoaded, setLastLoaded] = useState('');
+    const [testResults, setTestResults] = useState([]);
+    const [isTestRunning, setIsTestRunning] = useState(false);
+    const { handleRequest, respuesta, error, statusCode } = useRequest();
 
     useEffect(() => {
         // Recuperar nombre de archivo y fecha de carga cuando se monta el componente
@@ -18,7 +23,9 @@ function ApiPage({ csvContent, setCsvContent, clearCsvCache }) {
         if (savedLoadDate && csvContent) {
             setLastLoaded(savedLoadDate);
         }
-    }, [csvContent]); const handleCsvUpload = (event) => {
+    }, [csvContent]);
+
+    const handleCsvUpload = (event) => {
         const file = event.target.files[0];
         if (file) {
             setIsLoading(true);
@@ -42,6 +49,66 @@ function ApiPage({ csvContent, setCsvContent, clearCsvCache }) {
             };
             reader.readAsText(file);
         }
+    };
+
+    const runApiTests = async (csvData) => {
+        if (!csvData) return;
+
+        setIsTestRunning(true);
+        const rows = csvData.split('\n').map(row => row.split(','));
+        const headers = rows[0];
+
+        // Encontrar índices de las columnas necesarias
+        const rutaIndex = headers.findIndex(h => h.toLowerCase() === 'ruta');
+        const tipoIndex = headers.findIndex(h => h.toLowerCase() === 'tipo');
+        const headersIndex = headers.findIndex(h => h.toLowerCase() === 'headers');
+        const bodyIndex = headers.findIndex(h => h.toLowerCase() === 'body');
+        const bodyEsperadoIndex = headers.findIndex(h => h.toLowerCase() === 'body esperado');
+
+        const results = [];
+
+        // Ejecutar las pruebas para cada fila
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row[rutaIndex]) continue; // Saltar filas vacías
+
+            try {
+                const headers = row[headersIndex] ? JSON.parse(row[headersIndex]) : {};
+                const body = row[bodyIndex] ? JSON.parse(row[bodyIndex]) : null;
+
+                await handleRequest({
+                    url: row[rutaIndex],
+                    method: row[tipoIndex] || 'GET',
+                    headers,
+                    body
+                });
+
+                const expectedBody = row[bodyEsperadoIndex] ? JSON.parse(row[bodyEsperadoIndex]) : null;
+                const bodyMatches = JSON.stringify(respuesta) === JSON.stringify(expectedBody);
+
+                results.push({
+                    index: i,
+                    ruta: row[rutaIndex],
+                    tipo: row[tipoIndex],
+                    codigoRecibido: statusCode,
+                    bodyRecibido: respuesta,
+                    bodyEsperado: expectedBody,
+                    coincide: bodyMatches,
+                    error: error || null
+                });
+            } catch (err) {
+                results.push({
+                    index: i,
+                    ruta: row[rutaIndex],
+                    tipo: row[tipoIndex],
+                    error: err.message,
+                    coincide: false
+                });
+            }
+        }
+
+        setTestResults(results);
+        setIsTestRunning(false);
     };
 
     return (<div className="w-full h-full flex flex-col items-center p-6 bg-gray-700 text-white">
@@ -74,8 +141,18 @@ function ApiPage({ csvContent, setCsvContent, clearCsvCache }) {
             <button
                 type="button"
                 className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                onClick={() => runApiTests(csvContent)}
+                disabled={isTestRunning}
             >
-                API Test
+                {isTestRunning ? (
+                    <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Ejecutando pruebas...
+                    </>
+                ) : 'Ejecutar Pruebas API'}
             </button>
             {csvContent && (
                 <button
@@ -100,6 +177,10 @@ function ApiPage({ csvContent, setCsvContent, clearCsvCache }) {
                     )}
                 </div>
                 <span className="text-xs text-green-500">✓ En cache</span>
+            </div>
+        )}        {testResults.length > 0 && (
+            <div className="w-full mb-6">
+                <ApiTestResults results={testResults} />
             </div>
         )}
 
