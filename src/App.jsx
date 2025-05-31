@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import HomePage from "./Pages/Home";
-import ApiPage from "./Views/Api";
+import ApiPage from "./Pages/Api";
 import Encript from "./Pages/encript";
 import Sidebar from "./Components/Sidebar";
 import "./App.css";

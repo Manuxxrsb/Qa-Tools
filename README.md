@@ -1,12 +1,51 @@
-# React + Vite
+# QA Tools
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Una aplicación web desarrollada con React y Vite que proporciona herramientas útiles para profesionales de QA y desarrolladores.
 
-Currently, two official plugins are available:
+## Características
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Prueba de APIs desde un archivo CSV**: Permite importar un archivo CSV con datos de prueba y ejecutar pruebas de API de forma masiva.
+- **Encriptación y desencriptación de datos**: Herramienta para encriptar y desencriptar información sensible.
 
-## Expanding the ESLint configuration
+## Requisitos previos
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Node.js 16.x o superior
+- npm 8.x o superior
+
+## Instalación
+
+1. Clona este repositorio:
+   ```bash
+   git clone https://github.com/tu-usuario/Qa-Tools.git
+   cd Qa-Tools
+   ```
+
+2. Instala las dependencias:
+   ```bash
+   npm install
+   ```
+
+## Ejecución
+
+Para iniciar el servidor de desarrollo:
+
+```bash
+npm run dev
+```
+
+La aplicación estará disponible en `http://localhost:5173/`
+
+## Construcción para producción
+
+```bash
+npm run build
+```
+
+Los archivos optimizados para producción se generarán en la carpeta `dist/`.
+
+## Tecnologías utilizadas
+
+- React 18
+- Vite
+- React Router v6
+- Taildwind
