@@ -13,6 +13,7 @@ function App() {
     const savedCsv = localStorage.getItem('qa-tools-csv');
     return savedCsv || '';
   });
+  const [sidebarWidth, setSidebarWidth] = useState('240px'); // Ancho por defecto del sidebar
 
   // Guardar el CSV en localStorage cuando cambie
   useEffect(() => {
@@ -40,7 +41,7 @@ function App() {
       case 'api':
         return <ApiPage csvContent={csvContent} setCsvContent={setCsvContent} clearCsvCache={clearCsvCache} />;
       case 'encript':
-        return <Encript />;
+        return <Encript isCollapsed={isSidebarCollapsed} />;
       default:
         return <HomePage setActiveView={setActiveView} />;
     }
@@ -53,8 +54,9 @@ function App() {
         setActiveView={setActiveView}
         isCollapsed={isSidebarCollapsed}
         toggleSidebar={toggleSidebar}
+        onWidthChange={(width) => setSidebarWidth(width)}
       />
-      <main className="flex-1 bg-gray-700 transition-all duration-300 text-white min-h-screen flex flex-col items-center justify-center overflow-auto">
+      <main className="flex-1 bg-gray-700 transition-all duration-300 text-white min-h-screen flex flex-col items-center justify-center overflow-auto" style={{ marginLeft: isSidebarCollapsed ? '80px' : '240px' }}>
         {renderView()}
       </main>
     </div>

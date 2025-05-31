@@ -4,7 +4,7 @@ import { copyToClipboard, showCopySuccess } from '../Handlers/ClipboardHandler';
 import { formatJSON, getJsonSummary } from '../Handlers/JsonHandler';
 import Sidebar from '../Components/Sidebar';
 
-function Encript() {
+function Encript({ isCollapsed }) {
     const {
         text,
         setText,
@@ -19,15 +19,16 @@ function Encript() {
         isJsonInput,
         handleProcess
     } = useEncryption();
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    // Ancho de la sidebar: 4rem (colapsada) o 16rem (expandida)
-    const sidebarWidth = isSidebarCollapsed ? '4rem' : '16rem';
+
+    // Ancho de la sidebar basado en la prop isCollapsed
+    const sidebarWidth = isCollapsed ? '80px' : '240px';
 
     return (
         <div className="flex flex-col items-center w-full min-h-screen bg-gray-700 overflow-auto">
-            <h1 className="text-3xl mb-8 text-center font-bold text-white">Encriptación / Desencriptación</h1>
-            <div className="flex flex-col items-center w-full">
-                <div className="w-full max-w-3xl flex flex-col gap-6 items-center pb-12">
+            <h1 className="text-3xl mb-8 text-center font-bold text-white sticky top-0 z-20 bg-gray-700 pt-6 pb-4 w-full">
+                Encriptación / Desencriptación
+            </h1>            <div className="flex flex-col items-center w-full px-4">
+                <div className="w-full max-w-4xl flex flex-col gap-6 items-center pb-12">
                     {/* Botones para seleccionar modo */}
                     <div className="flex justify-center space-x-4 mb-2">
                         <button
