@@ -54,8 +54,29 @@ function ApiPage({ csvContent, setCsvContent, clearCsvCache }) {
     const runApiTests = async (csvData) => {
         if (!csvData) return;
 
-        setIsTestRunning(true);
-        const rows = csvData.split('\n').map(row => row.split(','));
+        setIsTestRunning(true);        // Dividir por líneas y procesar cada línea considerando las comillas
+        const lines = csvData.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        const parseCSVLine = (line) => {
+            const values = [];
+            let currentValue = '';
+            let insideQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    insideQuotes = !insideQuotes;
+                } else if (char === ',' && !insideQuotes) {
+                    values.push(currentValue.trim().replace(/^"|"$/g, ''));
+                    currentValue = '';
+                } else {
+                    currentValue += char;
+                }
+            }
+            values.push(currentValue.trim().replace(/^"|"$/g, ''));
+            return values;
+        };
+
+        const rows = lines.map(line => parseCSVLine(line));
         const headers = rows[0];
 
         // Encontrar índices de las columnas según la nueva estructura
