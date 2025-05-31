@@ -103,29 +103,36 @@ const useEncryption = () => {
         if (!keyWordArray || !ivWordArray) {
             throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
         }
-        // Verificar si el texto parece JSON para intentar tratarlo como objeto
-        let textToProcess = textToEncrypt;
-
-        // Si comienza con { o [, intentamos parsearlo como JSON
+        // Si el texto es un JSON válido, encriptar solo los valores, no las claves
         if (isJsonInput && mode === 'encrypt') {
             try {
-                // Si es un JSON válido, lo convertimos a string para asegurarnos
-                JSON.parse(textToEncrypt);
-                textToProcess = textToEncrypt; // Ya es un string JSON
-                console.log('Encriptando JSON válido');
+                const obj = JSON.parse(textToEncrypt);
+                if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+                    const encryptedObj = {};
+                    for (const key in obj) {
+                        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                            const value = obj[key];
+                            // Encriptar solo el valor
+                            const encryptedValue = CryptoJS.AES.encrypt(String(value), keyWordArray, {
+                                iv: ivWordArray,
+                                mode: CryptoJS.mode.CBC,
+                                padding: CryptoJS.pad.Pkcs7
+                            }).toString();
+                            encryptedObj[key] = encryptedValue;
+                        }
+                    }
+                    return JSON.stringify(encryptedObj);
+                }
             } catch (e) {
-                // No es un JSON válido, continuar como texto normal
-                console.log('Texto no reconocido como JSON válido, procesando como texto normal');
+                // Si no es un JSON válido, continuar como texto normal
             }
         }
-
-        // Encriptar usando AES
-        const encrypted = CryptoJS.AES.encrypt(textToProcess, keyWordArray, {
+        // Encriptar usando AES todo el texto si no es el caso especial
+        const encrypted = CryptoJS.AES.encrypt(textToEncrypt, keyWordArray, {
             iv: ivWordArray,
             mode: CryptoJS.mode.CBC,
             padding: CryptoJS.pad.Pkcs7
         });
-
         return encrypted.toString();
     };
 
@@ -142,16 +149,13 @@ const useEncryption = () => {
         if (!keyWordArray || !ivWordArray) {
             throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
         }
-
         // Desencriptar usando AES
         const decrypted = CryptoJS.AES.decrypt(textToDecrypt, keyWordArray, {
             iv: ivWordArray,
             mode: CryptoJS.mode.CBC,
             padding: CryptoJS.pad.Pkcs7
         });
-
         const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
-
         // Intentar parsear como JSON, si falla, devolver como texto plano
         try {
             // Verificamos si parece un objeto JSON (comienza con { o [)
@@ -164,7 +168,6 @@ const useEncryption = () => {
             // Si hay un error al parsear como JSON, no hacemos nada y devolvemos el texto
             console.log('No es un JSON válido, devolviendo como texto plano');
         }
-
         return decryptedString;
     };
 
@@ -175,14 +178,19 @@ const useEncryption = () => {
         if (!validateInputs()) {
             return;
         }
-
         setError('');
 
         try {
             if (mode === 'encrypt') {
                 // Para encriptar, podemos procesar texto directamente
                 const encrypted = encrypt(text, key, iv);
-                setResult(encrypted);
+                // Si el resultado es un JSON, formatear bonito
+                try {
+                    const parsed = JSON.parse(encrypted);
+                    setResult(JSON.stringify(parsed, null, 2));
+                } catch {
+                    setResult(encrypted);
+                }
             } else {
                 // Para desencriptar, procesamos y manejamos el resultado
                 const decrypted = decrypt(text, key, iv);
