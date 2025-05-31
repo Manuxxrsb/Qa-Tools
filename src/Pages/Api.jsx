@@ -86,7 +86,8 @@ function ApiPage({ csvContent, setCsvContent, clearCsvCache }) {
                     Borrar CSV
                 </button>
             )}
-        </div>            {fileName && csvContent && (
+        </div>
+        {fileName && csvContent && (
             <div className="w-full bg-gray-800 p-2 rounded mb-4 flex justify-between items-center flex-wrap gap-y-2">
                 <div className="flex flex-col">
                     <span className="text-sm">
