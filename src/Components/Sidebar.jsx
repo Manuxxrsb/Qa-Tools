@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-function Sidebar({ activeView, setActiveView, isCollapsed, toggleSidebar, onWidthChange }) {
-    useEffect(() => {
-        onWidthChange(!isCollapsed ? '240px' : '80px');
-    }, [isCollapsed, onWidthChange]);
+function Sidebar({ activeView, setActiveView, isCollapsed, toggleSidebar }) {
 
     const menuItems = [
         { id: 'home', label: 'Inicio', icon: '🏠' },

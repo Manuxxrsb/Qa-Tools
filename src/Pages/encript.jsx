@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import useEncryption from '../Hooks/useEncryption';
 import { copyToClipboard, showCopySuccess } from '../Handlers/ClipboardHandler';
-import { formatJSON, getJsonSummary } from '../Handlers/JsonHandler';
-import Sidebar from '../Components/Sidebar';
+import { formatJSON } from '../Handlers/JsonHandler';
 
 function Encript({ isCollapsed }) {
     const {
@@ -17,11 +15,7 @@ function Encript({ isCollapsed }) {
         setMode,
         error,
         isJsonInput,
-        handleProcess
-    } = useEncryption();
-
-    // Ancho de la sidebar basado en la prop isCollapsed
-    const sidebarWidth = isCollapsed ? '80px' : '240px';
+        handleProcess } = useEncryption();
 
     return (
         <div className="flex flex-col items-center w-full min-h-screen bg-gray-700 overflow-auto">
