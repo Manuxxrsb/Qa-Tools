@@ -58,12 +58,15 @@ function ApiPage({ csvContent, setCsvContent, clearCsvCache }) {
         const rows = csvData.split('\n').map(row => row.split(','));
         const headers = rows[0];
 
-        // Encontrar índices de las columnas necesarias
-        const rutaIndex = headers.findIndex(h => h.toLowerCase() === 'ruta');
-        const tipoIndex = headers.findIndex(h => h.toLowerCase() === 'tipo');
-        const headersIndex = headers.findIndex(h => h.toLowerCase() === 'headers');
-        const bodyIndex = headers.findIndex(h => h.toLowerCase() === 'body');
-        const bodyEsperadoIndex = headers.findIndex(h => h.toLowerCase() === 'body esperado');
+        // Encontrar índices de las columnas según la nueva estructura
+        const nombreIndex = headers.findIndex(h => h === 'Nombre');
+        const codigoEsperadoIndex = headers.findIndex(h => h === 'Codigo esperado');
+        const bodyEsperadoIndex = headers.findIndex(h => h === 'Body esperado');
+        const bodyRequestIndex = headers.findIndex(h => h === 'body request');
+        const tipoIndex = headers.findIndex(h => h === 'Tipo');
+        const headersIndex = headers.findIndex(h => h === 'Headers');
+        const rutaIndex = headers.findIndex(h => h === 'Ruta');
+        const descripcionIndex = headers.findIndex(h => h === 'Descripcion');
 
         const results = [];
 
@@ -73,36 +76,51 @@ function ApiPage({ csvContent, setCsvContent, clearCsvCache }) {
             if (!row[rutaIndex]) continue; // Saltar filas vacías
 
             try {
-                const headers = row[headersIndex] ? JSON.parse(row[headersIndex]) : {};
-                const body = row[bodyIndex] ? JSON.parse(row[bodyIndex]) : null;
+                const requestHeaders = row[headersIndex] && row[headersIndex].trim() !== ''
+                    ? JSON.parse(row[headersIndex])
+                    : {};
+
+                const requestBody = row[bodyRequestIndex] && row[bodyRequestIndex].trim() !== ''
+                    ? JSON.parse(row[bodyRequestIndex])
+                    : null;
 
                 await handleRequest({
                     url: row[rutaIndex],
-                    method: row[tipoIndex] || 'GET',
-                    headers,
-                    body
+                    method: row[tipoIndex],
+                    headers: requestHeaders,
+                    body: requestBody
                 });
 
-                const expectedBody = row[bodyEsperadoIndex] ? JSON.parse(row[bodyEsperadoIndex]) : null;
+                const expectedBody = row[bodyEsperadoIndex] && row[bodyEsperadoIndex].trim() !== ''
+                    ? JSON.parse(row[bodyEsperadoIndex])
+                    : null;
+
+                const expectedCode = parseInt(row[codigoEsperadoIndex]) || null;
                 const bodyMatches = JSON.stringify(respuesta) === JSON.stringify(expectedBody);
+                const codeMatches = expectedCode === statusCode;
 
                 results.push({
-                    index: i,
+                    nombre: row[nombreIndex],
+                    descripcion: row[descripcionIndex],
                     ruta: row[rutaIndex],
                     tipo: row[tipoIndex],
+                    codigoEsperado: expectedCode,
                     codigoRecibido: statusCode,
                     bodyRecibido: respuesta,
                     bodyEsperado: expectedBody,
-                    coincide: bodyMatches,
-                    error: error || null
+                    coincideBody: bodyMatches,
+                    coindiceCodigo: codeMatches,
+                    error: null
                 });
             } catch (err) {
                 results.push({
-                    index: i,
+                    nombre: row[nombreIndex],
+                    descripcion: row[descripcionIndex],
                     ruta: row[rutaIndex],
                     tipo: row[tipoIndex],
                     error: err.message,
-                    coincide: false
+                    coincideBody: false,
+                    coindiceCodigo: false
                 });
             }
         }

@@ -2,13 +2,8 @@ import { useState } from "react";
 import axios from "axios";
 import { generateJwt } from "./JwtGeneratorComponent";
 
-// Determinar la baseURL según el entorno
-const isDevelopment = import.meta.env.DEV;
-const baseURL = isDevelopment ? "/api" : import.meta.env.VITE_API_URL;
-
 // Crear instancia de axios con configuración base
 const api = axios.create({
-  baseURL,
   withCredentials: false, // importante para CORS
 });
 
@@ -16,6 +11,27 @@ const useRequest = () => {
   const [respuesta, setRespuesta] = useState("");
   const [error, setError] = useState("");
   const [statusCode, setStatusCode] = useState("");
+  const [cachedJwt, setCachedJwt] = useState(null);
+  const [jwtExpiration, setJwtExpiration] = useState(null);
+
+  const getValidJwt = async () => {
+    const now = Date.now();
+    if (cachedJwt && jwtExpiration && now < jwtExpiration) {
+      return cachedJwt;
+    }
+
+    try {
+      const newToken = generateJwt();
+      // Guardar el nuevo token y establecer su expiración a 55 minutos
+      // (un poco menos que la hora típica para estar seguros)
+      setCachedJwt(newToken);
+      setJwtExpiration(now + 55 * 60 * 1000);
+      return newToken;
+    } catch (e) {
+      throw new Error("Error generando JWT: " + e.message);
+    }
+  };
+
   /**
    * Realiza una petición HTTP genérica.
    * @param {Object} params
@@ -25,39 +41,36 @@ const useRequest = () => {
    * @param {any} [params.body] - Cuerpo de la petición (opcional, para POST, PUT, PATCH, etc).
    */
   const handleRequest = async ({ url, method, headers = undefined, body = undefined }) => {
+    console.log('Request params:', { url, method, headers, body });
+
     if (!url || !method) {
       setError("Los parámetros 'url' y 'method' son obligatorios.");
       return;
-    }
-    try {
-      let res;
-      const cleanUrl = url.startsWith("/") ? url.substring(1) : url;
-      let jwtToken;
-      try {
-        jwtToken = generateJwt();
-      } catch (e) {
-        setError("Error generando JWT: " + e.message);
-        return;
-      }
-      // Construir headers
+    } try {
+      let jwtToken = await getValidJwt();
+
       const finalHeaders = {
         ...(body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...(headers || {}),
         Authorization: `Bearer ${jwtToken}`
       };
+
       const config = { headers: finalHeaders };
       const upperMethod = method.toUpperCase();
+      let res;
+
       if (["POST", "PUT", "PATCH"].includes(upperMethod)) {
-        res = await api[upperMethod.toLowerCase()](cleanUrl, body, config);
+        res = await api[upperMethod.toLowerCase()](url, body, config);
       } else if (upperMethod === "DELETE") {
-        res = await api.delete(cleanUrl, config);
+        res = await api.delete(url, config);
       } else {
-        // GET u otros métodos sin body
-        res = await api.get(cleanUrl, config);
-      } setRespuesta(res.data);
+        res = await api.get(url, config);
+      } console.log('Response:', { data: res.data, status: res.status });
+      setRespuesta(res.data);
       setStatusCode(res.status);
       setError("");
     } catch (err) {
+      console.error('Request error:', err);
       setRespuesta("");
       setStatusCode(err.response?.status || "");
       let errorMessage = "Error en la solicitud";
