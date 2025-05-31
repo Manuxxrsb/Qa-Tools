@@ -2,9 +2,16 @@ import { useState } from "react";
 import axios from "axios";
 import { generateJwt } from "./JwtGeneratorComponent";
 
+console.log('API URL:', import.meta.env.VITE_API_URL); // Para debug
+
 // Crear instancia de axios con configuración base
 const api = axios.create({
+  baseURL: "http://127.0.0.1:8080", // URL directa al backend
   withCredentials: false, // importante para CORS
+  headers: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*'
+  }
 });
 
 const useRequest = () => {
@@ -47,24 +54,30 @@ const useRequest = () => {
       setError("Los parámetros 'url' y 'method' son obligatorios.");
       return;
     } try {
-      let jwtToken = await getValidJwt();
-
-      const finalHeaders = {
+      let finalHeaders = {
         ...(body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-        ...(headers || {}),
-        Authorization: `Bearer ${jwtToken}`
+        ...(headers || {})
       };
-
+      // Si la ruta NO es /ping, agregar JWT
+      if (!url.includes('/ping')) {
+        const jwtToken = await getValidJwt();
+        finalHeaders = {
+          ...finalHeaders,
+          Authorization: `Bearer ${jwtToken}`
+        };
+      }
       const config = { headers: finalHeaders };
       const upperMethod = method.toUpperCase();
-      let res;
+      let res;      // Limpiamos la URL de cualquier slash inicial
+      const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+      console.log('Requesting URL:', cleanUrl); // Para debug
 
       if (["POST", "PUT", "PATCH"].includes(upperMethod)) {
-        res = await api[upperMethod.toLowerCase()](url, body, config);
+        res = await api[upperMethod.toLowerCase()](cleanUrl, body, config);
       } else if (upperMethod === "DELETE") {
-        res = await api.delete(url, config);
+        res = await api.delete(cleanUrl, config);
       } else {
-        res = await api.get(url, config);
+        res = await api.get(cleanUrl, config);
       } console.log('Response:', { data: res.data, status: res.status });
       setRespuesta(res.data);
       setStatusCode(res.status);
