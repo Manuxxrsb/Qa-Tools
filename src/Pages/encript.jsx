@@ -15,29 +15,45 @@ function Encript() {
         setMode,
         error,
         isJsonInput,
-        handleProcess } = useEncryption();
+        handleProcess,
+        encryptionMode,
+        setEncryptionMode } = useEncryption();
 
     return (
         <div className="flex flex-col items-center w-full min-h-screen bg-gray-700 overflow-auto">
             <h1 className="text-3xl mb-8 text-center font-bold text-white sticky top-0 z-20 bg-gray-700 pt-6 pb-4 w-full">
                 Encriptación / Desencriptación
             </h1>            <div className="flex flex-col items-center w-full px-4">
-                <div className="w-full max-w-4xl flex flex-col gap-6 items-center pb-12">
-                    {/* Botones para seleccionar modo */}
-                    <div className="flex justify-center space-x-4 mb-2">
-                        <button
-                            className={`px-4 py-2 rounded ${mode === 'encrypt' ? 'bg-blue-500 text-white' : 'bg-gray-600 text-white'}`}
-                            onClick={() => setMode('encrypt')}
-                        >
-                            Encriptar
-                        </button>
-                        <button
-                            className={`px-4 py-2 rounded ${mode === 'decrypt' ? 'bg-blue-500 text-white' : 'bg-gray-600 text-white'}`}
-                            onClick={() => setMode('decrypt')}
-                        >
-                            Desencriptar
-                        </button>
-                    </div>                    {/* Inputs de Key e IV centrados */}
+                <div className="w-full max-w-4xl flex flex-col gap-6 items-center pb-12">                    {/* Botones para seleccionar modo de operación */}
+                    <div className="flex flex-col items-center gap-4 mb-4">
+                        <div className="flex justify-center space-x-4">
+                            <button
+                                className={`px-4 py-2 rounded ${mode === 'encrypt' ? 'bg-blue-500 text-white' : 'bg-gray-600 text-white'}`}
+                                onClick={() => setMode('encrypt')}
+                            >
+                                Encriptar
+                            </button>
+                            <button
+                                className={`px-4 py-2 rounded ${mode === 'decrypt' ? 'bg-blue-500 text-white' : 'bg-gray-600 text-white'}`}
+                                onClick={() => setMode('decrypt')}
+                            >
+                                Desencriptar
+                            </button>
+                        </div>
+
+                        {/* Selector de modo de cifrado */}
+                        <div className="flex items-center gap-4">
+                            <span className="text-white text-sm">Modo de cifrado:</span>
+                            <select
+                                value={encryptionMode}
+                                onChange={(e) => setEncryptionMode(e.target.value)}
+                                className="bg-gray-800 text-white border border-gray-600 rounded px-3 py-1"
+                            >
+                                <option value="aes">AES-256</option>
+                                <option value="aes-cbc">AES-256-CBC</option>
+                            </select>
+                        </div>
+                    </div>{/* Inputs de Key e IV centrados */}
                     <div className="flex flex-row justify-center gap-12 mb-4 w-full max-w-5xl mx-auto">
                         <div className="flex-1 flex flex-col items-center">
                             <label className="block text-white text-sm font-bold mb-1 text-center w-full" htmlFor="key-input">
@@ -49,9 +65,10 @@ function Encript() {
                                 placeholder="Clave secreta..."
                                 value={key}
                                 onChange={(e) => setKey(e.target.value)}
-                            />
-                            <p className="text-xs text-gray-400 mt-1 text-center w-full">
-                                La clave debe ser segura y recordable (16 o 32 caracteres)
+                            />                            <p className="text-xs text-gray-400 mt-1 text-center w-full">
+                                {encryptionMode === 'aes-cbc'
+                                    ? 'La clave debe ser un valor hexadecimal válido para AES-256-CBC'
+                                    : 'La clave debe ser segura y recordable (16 o 32 caracteres)'}
                             </p>
                         </div>
                         <div className="flex-1 flex flex-col items-center">
@@ -61,12 +78,16 @@ function Encript() {
                             <input
                                 id="iv-input"
                                 className="w-full p-2 border border-gray-500 rounded bg-gray-800 text-white"
-                                placeholder="Vector de inicialización (16 o 32)"
+                                placeholder={encryptionMode === 'aes-cbc'
+                                    ? "Vector de inicialización (valor hexadecimal)"
+                                    : "Vector de inicialización (16 o 32 caracteres)"}
                                 value={iv}
                                 onChange={(e) => setIv(e.target.value)}
                             />
                             <p className="text-xs text-gray-400 mt-1 text-center w-full">
-                                Debe tener 16 o 32 caracteres
+                                {encryptionMode === 'aes-cbc'
+                                    ? 'Debe ser un valor hexadecimal válido'
+                                    : 'Debe tener 16 o 32 caracteres'}
                             </p>
                         </div>
                     </div>

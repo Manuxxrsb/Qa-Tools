@@ -13,6 +13,7 @@ const useEncryption = () => {
     const [mode, setMode] = useState('encrypt'); // encrypt or decrypt
     const [error, setError] = useState('');
     const [isJsonInput, setIsJsonInput] = useState(false);
+    const [encryptionMode, setEncryptionMode] = useState('aes'); // 'aes' o 'aes-cbc'
 
     /**
      * Verifica si el texto es un JSON válido
@@ -60,9 +61,7 @@ const useEncryption = () => {
             return CryptoJS.enc.Utf8.parse(str);
         }
         return null;
-    };
-
-    /**
+    };    /**
      * Valida que todos los datos necesarios estén presentes
      * @returns {boolean} Indica si los datos son válidos
      */
@@ -79,13 +78,28 @@ const useEncryption = () => {
             setError('El vector de inicialización (IV) es obligatorio');
             return false;
         }
-        if (!(key.length === 16 || key.length === 32)) {
-            setError('La clave debe tener 16 o 32 caracteres (bytes)');
-            return false;
-        }
-        if (!(iv.length === 16 || iv.length === 32)) {
-            setError('El IV debe tener 16 o 32 caracteres (bytes)');
-            return false;
+
+        if (encryptionMode === 'aes-cbc') {
+            // Para AES-256-CBC, validar que sean valores hexadecimales válidos
+            const hexRegex = /^[0-9A-Fa-f]+$/;
+            if (!hexRegex.test(key)) {
+                setError('La clave debe ser un valor hexadecimal válido para AES-256-CBC');
+                return false;
+            }
+            if (!hexRegex.test(iv)) {
+                setError('El IV debe ser un valor hexadecimal válido para AES-256-CBC');
+                return false;
+            }
+        } else {
+            // Para AES normal, validar longitud de caracteres
+            if (!(key.length === 16 || key.length === 32)) {
+                setError('La clave debe tener 16 o 32 caracteres (bytes)');
+                return false;
+            }
+            if (!(iv.length === 16 || iv.length === 32)) {
+                setError('El IV debe tener 16 o 32 caracteres (bytes)');
+                return false;
+            }
         }
         return true;
     };
@@ -96,13 +110,22 @@ const useEncryption = () => {
      * @param {string} encryptionKey - Clave de encriptación
      * @param {string} initVector - Vector de inicialización
      * @returns {string} Texto encriptado
-     */
-    const encrypt = (textToEncrypt, encryptionKey, initVector) => {
-        const keyWordArray = normalizeKeyOrIv(encryptionKey);
-        const ivWordArray = normalizeKeyOrIv(initVector);
-        if (!keyWordArray || !ivWordArray) {
-            throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
+     */    const encrypt = (textToEncrypt, encryptionKey, initVector) => {
+        let keyWordArray, ivWordArray;
+
+        if (encryptionMode === 'aes-cbc') {
+            // Para AES-256-CBC, convertir la key y el IV de hexadecimal
+            keyWordArray = CryptoJS.enc.Hex.parse(encryptionKey);
+            ivWordArray = CryptoJS.enc.Hex.parse(initVector);
+        } else {
+            // Para AES normal, usar el método original
+            keyWordArray = normalizeKeyOrIv(encryptionKey);
+            ivWordArray = normalizeKeyOrIv(initVector);
+            if (!keyWordArray || !ivWordArray) {
+                throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
+            }
         }
+
         // Si el texto es un JSON válido, encriptar solo los valores, no las claves
         if (isJsonInput && mode === 'encrypt') {
             try {
@@ -112,7 +135,6 @@ const useEncryption = () => {
                     for (const key in obj) {
                         if (Object.prototype.hasOwnProperty.call(obj, key)) {
                             const value = obj[key];
-                            // Encriptar solo el valor
                             const encryptedValue = CryptoJS.AES.encrypt(String(value), keyWordArray, {
                                 iv: ivWordArray,
                                 mode: CryptoJS.mode.CBC,
@@ -127,7 +149,7 @@ const useEncryption = () => {
                 // Si no es un JSON válido, continuar como texto normal
             }
         }
-        // Encriptar usando AES todo el texto si no es el caso especial
+
         const encrypted = CryptoJS.AES.encrypt(textToEncrypt, keyWordArray, {
             iv: ivWordArray,
             mode: CryptoJS.mode.CBC,
@@ -142,33 +164,107 @@ const useEncryption = () => {
      * @param {string} encryptionKey - Clave de encriptación
      * @param {string} initVector - Vector de inicialización
      * @returns {string|object} Texto desencriptado o objeto JSON
-     */
-    const decrypt = (textToDecrypt, encryptionKey, initVector) => {
-        const keyWordArray = normalizeKeyOrIv(encryptionKey);
-        const ivWordArray = normalizeKeyOrIv(initVector);
-        if (!keyWordArray || !ivWordArray) {
-            throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
-        }
-        // Desencriptar usando AES
-        const decrypted = CryptoJS.AES.decrypt(textToDecrypt, keyWordArray, {
-            iv: ivWordArray,
-            mode: CryptoJS.mode.CBC,
-            padding: CryptoJS.pad.Pkcs7
-        });
-        const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
-        // Intentar parsear como JSON, si falla, devolver como texto plano
-        try {
-            // Verificamos si parece un objeto JSON (comienza con { o [)
-            if (decryptedString.trim().startsWith('{') || decryptedString.trim().startsWith('[')) {
-                const jsonObject = JSON.parse(decryptedString);
-                console.log('Desencriptado como JSON válido');
-                return jsonObject;
+     */    const decrypt = (textToDecrypt, encryptionKey, initVector) => {
+        let keyWordArray, ivWordArray;
+
+        if (encryptionMode === 'aes-cbc') {
+            try {
+                console.log('=== Inicio de desencriptación CBC ===');
+                console.log('Texto a desencriptar:', textToDecrypt);
+                console.log('Key:', encryptionKey, '(longitud:', encryptionKey.length, ')');
+                console.log('IV:', initVector, '(longitud:', initVector.length, ')');
+
+                // Para AES-256-CBC, convertir la key y el IV de hexadecimal
+                keyWordArray = CryptoJS.enc.Hex.parse(encryptionKey);
+                ivWordArray = CryptoJS.enc.Hex.parse(initVector);
+
+                // Convertir el texto Base64 a WordArray
+                const ciphertext = CryptoJS.enc.Base64.parse(textToDecrypt);
+
+                console.log('=== Datos parseados ===');
+                console.log('Key WordArray:', keyWordArray.toString());
+                console.log('IV WordArray:', ivWordArray.toString());
+                console.log('Ciphertext WordArray:', ciphertext.toString());
+
+                // Intentar desencriptar directamente con el texto en Base64
+                try {
+                    console.log('=== Intentando desencripción método 1 ===');
+                    const decrypted = CryptoJS.AES.decrypt(
+                        {
+                            ciphertext: ciphertext,
+                            salt: null
+                        },
+                        keyWordArray,
+                        {
+                            iv: ivWordArray,
+                            mode: CryptoJS.mode.CBC,
+                            padding: CryptoJS.pad.Pkcs7
+                        }
+                    );
+
+                    console.log('Bytes desencriptados:', decrypted.toString());
+                    const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+                    console.log('Resultado final:', decryptedString);
+
+                    if (decryptedString && decryptedString.length > 0) {
+                        return decryptedString;
+                    }
+                } catch (e1) {
+                    console.log('Error en método 1:', e1);
+                }
+
+                // Si el primer método falla, intentar con el texto directo
+                try {
+                    console.log('=== Intentando desencripción método 2 ===');
+                    const decrypted = CryptoJS.AES.decrypt(textToDecrypt, keyWordArray, {
+                        iv: ivWordArray,
+                        mode: CryptoJS.mode.CBC,
+                        padding: CryptoJS.pad.Pkcs7
+                    });
+
+                    const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+                    console.log('Resultado final método 2:', decryptedString);
+
+                    if (decryptedString && decryptedString.length > 0) {
+                        return decryptedString;
+                    }
+                } catch (e2) {
+                    console.log('Error en método 2:', e2);
+                }
+
+                throw new Error('No se pudo desencriptar el texto con ningún método');
+            } catch (e) {
+                console.error('Error detallado en decrypt CBC:', e);
+                throw new Error(`Error al desencriptar en modo CBC: ${e.message}`);
             }
-        } catch (e) {
-            // Si hay un error al parsear como JSON, no hacemos nada y devolvemos el texto
-            console.log('No es un JSON válido, devolviendo como texto plano');
+        } else {
+            // Para AES normal, usar el método original
+            keyWordArray = normalizeKeyOrIv(encryptionKey);
+            ivWordArray = normalizeKeyOrIv(initVector);
+            if (!keyWordArray || !ivWordArray) {
+                throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
+            }
+
+            // Desencriptar usando AES
+            const decrypted = CryptoJS.AES.decrypt(textToDecrypt, keyWordArray, {
+                iv: ivWordArray,
+                mode: CryptoJS.mode.CBC,
+                padding: CryptoJS.pad.Pkcs7
+            });
+            const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+            // Intentar parsear como JSON, si falla, devolver como texto plano
+            try {
+                // Verificamos si parece un objeto JSON (comienza con { o [)
+                if (decryptedString.trim().startsWith('{') || decryptedString.trim().startsWith('[')) {
+                    const jsonObject = JSON.parse(decryptedString);
+                    return jsonObject;
+                }
+            } catch (e) {
+                // Si hay un error al parsear como JSON, no hacemos nada y devolvemos el texto
+                console.log('No es un JSON válido, devolviendo como texto plano');
+            }
+            return decryptedString;
         }
-        return decryptedString;
     };
 
     /**
@@ -221,7 +317,9 @@ const useEncryption = () => {
         setError,
         isJsonInput,
         generateRandomIV,
-        handleProcess
+        handleProcess,
+        encryptionMode,
+        setEncryptionMode
     };
 };
 
