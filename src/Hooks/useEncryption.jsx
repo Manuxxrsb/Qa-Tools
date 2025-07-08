@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import CryptoJS from 'crypto-js';
+import { encryptAESCBC } from './useEncryptAESCBC';
+import { decryptAESCBC } from './useDecryptAESCBC';
+import useEncryptAES from './useEncryptAES';
+import useDecryptAES from './useDecryptAES';
 
 /**
  * Hook personalizado para manejar operaciones de encriptación y desencriptación AES-256
@@ -41,6 +45,7 @@ const useEncryption = () => {
         setTextInternal(newText);
         setIsJsonInput(checkIfJson(newText));
     };
+    // Elimina funciones legacy y lógica duplicada de CBC/ECB
 
     /**
      * Genera un vector de inicialización (IV) aleatorio
@@ -74,12 +79,11 @@ const useEncryption = () => {
             setError('La clave de encriptación es obligatoria');
             return false;
         }
-        if (!iv) {
-            setError('El vector de inicialización (IV) es obligatorio');
-            return false;
-        }
-
         if (encryptionMode === 'aes-cbc') {
+            if (!iv) {
+                setError('El vector de inicialización (IV) es obligatorio');
+                return false;
+            }
             // Para AES-256-CBC, validar que sean valores hexadecimales válidos
             const hexRegex = /^[0-9A-Fa-f]+$/;
             if (!hexRegex.test(key)) {
@@ -91,13 +95,9 @@ const useEncryption = () => {
                 return false;
             }
         } else {
-            // Para AES normal, validar longitud de caracteres
+            // Para AES-ECB, validar longitud de caracteres
             if (!(key.length === 16 || key.length === 32)) {
                 setError('La clave debe tener 16 o 32 caracteres (bytes)');
-                return false;
-            }
-            if (!(iv.length === 16 || iv.length === 32)) {
-                setError('El IV debe tener 16 o 32 caracteres (bytes)');
                 return false;
             }
         }
@@ -105,165 +105,25 @@ const useEncryption = () => {
     };
 
     /**
-     * Encripta un texto utilizando AES-256
-     * @param {string} textToEncrypt - Texto a encriptar
-     * @param {string} encryptionKey - Clave de encriptación
-     * @param {string} initVector - Vector de inicialización
-     * @returns {string} Texto encriptado
-     */    const encrypt = (textToEncrypt, encryptionKey, initVector) => {
-        let keyWordArray, ivWordArray;
-
+     * Encripta un texto utilizando el modo seleccionado
+     */
+    const encrypt = (textToEncrypt, encryptionKey, initVector) => {
         if (encryptionMode === 'aes-cbc') {
-            // Para AES-256-CBC, convertir la key y el IV de hexadecimal
-            keyWordArray = CryptoJS.enc.Hex.parse(encryptionKey);
-            ivWordArray = CryptoJS.enc.Hex.parse(initVector);
+            return encryptAESCBC(textToEncrypt, encryptionKey, initVector);
         } else {
-            // Para AES normal, usar el método original
-            keyWordArray = normalizeKeyOrIv(encryptionKey);
-            ivWordArray = normalizeKeyOrIv(initVector);
-            if (!keyWordArray || !ivWordArray) {
-                throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
-            }
+            // AES-ECB (sin IV)
+            return encryptAES(textToEncrypt, encryptionKey);
         }
-
-        // Si el texto es un JSON válido, encriptar solo los valores, no las claves
-        if (isJsonInput && mode === 'encrypt') {
-            try {
-                const obj = JSON.parse(textToEncrypt);
-                if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-                    const encryptedObj = {};
-                    for (const key in obj) {
-                        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                            const value = obj[key];
-                            const encryptedValue = CryptoJS.AES.encrypt(String(value), keyWordArray, {
-                                iv: ivWordArray,
-                                mode: CryptoJS.mode.CBC,
-                                padding: CryptoJS.pad.Pkcs7
-                            }).toString();
-                            encryptedObj[key] = encryptedValue;
-                        }
-                    }
-                    return JSON.stringify(encryptedObj);
-                }
-            } catch (e) {
-                // Si no es un JSON válido, continuar como texto normal
-            }
-        }
-
-        const encrypted = CryptoJS.AES.encrypt(textToEncrypt, keyWordArray, {
-            iv: ivWordArray,
-            mode: CryptoJS.mode.CBC,
-            padding: CryptoJS.pad.Pkcs7
-        });
-        return encrypted.toString();
     };
-
     /**
-     * Desencripta un texto utilizando AES-256
-     * @param {string} textToDecrypt - Texto a desencriptar
-     * @param {string} encryptionKey - Clave de encriptación
-     * @param {string} initVector - Vector de inicialización
-     * @returns {string|object} Texto desencriptado o objeto JSON
-     */    const decrypt = (textToDecrypt, encryptionKey, initVector) => {
-        let keyWordArray, ivWordArray;
-
+     * Desencripta un texto utilizando el modo seleccionado
+     */
+    const decrypt = (textToDecrypt, encryptionKey, initVector) => {
         if (encryptionMode === 'aes-cbc') {
-            try {
-                console.log('=== Inicio de desencriptación CBC ===');
-                console.log('Texto a desencriptar:', textToDecrypt);
-                console.log('Key:', encryptionKey, '(longitud:', encryptionKey.length, ')');
-                console.log('IV:', initVector, '(longitud:', initVector.length, ')');
-
-                // Para AES-256-CBC, convertir la key y el IV de hexadecimal
-                keyWordArray = CryptoJS.enc.Hex.parse(encryptionKey);
-                ivWordArray = CryptoJS.enc.Hex.parse(initVector);
-
-                // Convertir el texto Base64 a WordArray
-                const ciphertext = CryptoJS.enc.Base64.parse(textToDecrypt);
-
-                console.log('=== Datos parseados ===');
-                console.log('Key WordArray:', keyWordArray.toString());
-                console.log('IV WordArray:', ivWordArray.toString());
-                console.log('Ciphertext WordArray:', ciphertext.toString());
-
-                // Intentar desencriptar directamente con el texto en Base64
-                try {
-                    console.log('=== Intentando desencripción método 1 ===');
-                    const decrypted = CryptoJS.AES.decrypt(
-                        {
-                            ciphertext: ciphertext,
-                            salt: null
-                        },
-                        keyWordArray,
-                        {
-                            iv: ivWordArray,
-                            mode: CryptoJS.mode.CBC,
-                            padding: CryptoJS.pad.Pkcs7
-                        }
-                    );
-
-                    console.log('Bytes desencriptados:', decrypted.toString());
-                    const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
-                    console.log('Resultado final:', decryptedString);
-
-                    if (decryptedString && decryptedString.length > 0) {
-                        return decryptedString;
-                    }
-                } catch (e1) {
-                    console.log('Error en método 1:', e1);
-                }
-
-                // Si el primer método falla, intentar con el texto directo
-                try {
-                    console.log('=== Intentando desencripción método 2 ===');
-                    const decrypted = CryptoJS.AES.decrypt(textToDecrypt, keyWordArray, {
-                        iv: ivWordArray,
-                        mode: CryptoJS.mode.CBC,
-                        padding: CryptoJS.pad.Pkcs7
-                    });
-
-                    const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
-                    console.log('Resultado final método 2:', decryptedString);
-
-                    if (decryptedString && decryptedString.length > 0) {
-                        return decryptedString;
-                    }
-                } catch (e2) {
-                    console.log('Error en método 2:', e2);
-                }
-
-                throw new Error('No se pudo desencriptar el texto con ningún método');
-            } catch (e) {
-                console.error('Error detallado en decrypt CBC:', e);
-                throw new Error(`Error al desencriptar en modo CBC: ${e.message}`);
-            }
+            return decryptAESCBC(textToDecrypt, encryptionKey, initVector);
         } else {
-            // Para AES normal, usar el método original
-            keyWordArray = normalizeKeyOrIv(encryptionKey);
-            ivWordArray = normalizeKeyOrIv(initVector);
-            if (!keyWordArray || !ivWordArray) {
-                throw new Error('Key o IV inválidos. Deben ser de 16 o 32 caracteres.');
-            }
-
-            // Desencriptar usando AES
-            const decrypted = CryptoJS.AES.decrypt(textToDecrypt, keyWordArray, {
-                iv: ivWordArray,
-                mode: CryptoJS.mode.CBC,
-                padding: CryptoJS.pad.Pkcs7
-            });
-            const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
-            // Intentar parsear como JSON, si falla, devolver como texto plano
-            try {
-                // Verificamos si parece un objeto JSON (comienza con { o [)
-                if (decryptedString.trim().startsWith('{') || decryptedString.trim().startsWith('[')) {
-                    const jsonObject = JSON.parse(decryptedString);
-                    return jsonObject;
-                }
-            } catch (e) {
-                // Si hay un error al parsear como JSON, no hacemos nada y devolvemos el texto
-                console.log('No es un JSON válido, devolviendo como texto plano');
-            }
-            return decryptedString;
+            // AES-ECB (sin IV)
+            return decryptAES(textToDecrypt, encryptionKey);
         }
     };
 
